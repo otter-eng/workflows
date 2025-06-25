@@ -13,9 +13,6 @@ on:
       dockerfile:
         type: string
         default: Dockerfile
-    outputs:
-      image:
-        value: ${{ vars.REGISTRY_URL }}/${{ inputs.name }}:${{ inputs.tag }}
 
 jobs:
   build:

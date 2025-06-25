@@ -35,7 +35,9 @@ jobs:
 
     - name: Rollout new image
       run: |
-        kubectl set image -n ${{ vars.NAMESPACE }} ${{ vars.RESOURCE_TYPE }}/${{ vars.RESOURCE_NAME }} ${{ inputs.containers }}
+        CONTAINERS=$(echo -n '${{ inputs.containers }}' | sed 's|=|=${{ vars.REGISTRY_URL }}/|g')
+
+        kubectl set image -n ${{ vars.NAMESPACE }} ${{ vars.RESOURCE_TYPE }}/${{ vars.RESOURCE_NAME }} $CONTAINERS
 
     - name: Wait for rollout
       run: |
