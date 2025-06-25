@@ -6,7 +6,7 @@ on:
         type: string
       containers:
         required: true
-        type: object
+        type: string
 
 jobs:
   release:
@@ -16,10 +16,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-
-    env:
-      IMAGE_NAME: ${{ vars.REGISTRY_URL }}/${{ inputs.name }}
-      IMAGE_TAG: ${{ inputs.tag }}
 
     steps:
     - id: auth
@@ -39,15 +35,7 @@ jobs:
 
     - name: Rollout new image
       run: |
-        CONTAINERS='${{ toJSON(inputs.containers) }}'
-        UPDATES=""
-        for KEY in $(echo "$CONTAINERS" | jq -r 'keys[]'); do
-          VALUE=$(echo "$CONTAINERS" | jq -r ".[\"$KEY\"]")
-          UPDATES="$UPDATES $KEY=${{ vars.REGISTRY_URL }}/$VALUE"
-        done
-
-        echo "Image updates are the following: $UPDATES"
-        kubectl set image -n ${{ vars.NAMESPACE }} ${{ vars.RESOURCE_TYPE }}/${{ vars.RESOURCE_NAME }} $UPDATES
+        kubectl set image -n ${{ vars.NAMESPACE }} ${{ vars.RESOURCE_TYPE }}/${{ vars.RESOURCE_NAME }} ${{ inputs.containers }}
 
     - name: Wait for rollout
       run: |
