@@ -4,12 +4,9 @@ on:
       environment:
         required: true
         type: string
-      name:
+      containers:
         required: true
-        type: string
-      tag:
-        required: true
-        type: string
+        type: object
 
 jobs:
   release:
@@ -25,20 +22,6 @@ jobs:
       IMAGE_TAG: ${{ inputs.tag }}
 
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build Docker image
-      uses: docker/build-push-action@v6
-      with:
-        push: false # GCP credentials are short-lived (5 minutes), so we can't init creds first, have possibly >5 min build, and then push using those creds
-        load: true
-        tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }},${{ env.IMAGE_NAME }}:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
     - id: auth
       name: Authenticate with GCP
       uses: google-github-actions/auth@v2
@@ -54,17 +37,17 @@ jobs:
       with:
         cluster_name: ${{ vars.GKE_CLUSTER }}
 
-    - name: Configure Docker
-      run: gcloud auth configure-docker ${{ vars.REGION }}-docker.pkg.dev
-
-    - name: Push image
-      run: |
-        docker push ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-        docker push ${{ env.IMAGE_NAME }}:latest
-
     - name: Rollout new image
       run: |
-        kubectl set image -n ${{ vars.NAMESPACE }} ${{ vars.RESOURCE_TYPE }}/${{ vars.RESOURCE_NAME }} ${{ vars.RESOURCE_NAME }}=${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        CONTAINERS='${{ toJSON(inputs.containers) }}'
+        UPDATES=""
+        for KEY in $(echo "$CONTAINERS" | jq -r 'keys[]'); do
+          VALUE=$(echo "$CONTAINERS" | jq -r ".[\"$KEY\"]")
+          UPDATES="$UPDATES $KEY=${{ vars.REGISTRY_URL }}/$VALUE"
+        done
+
+        echo "Image updates are the following: $UPDATES"
+        kubectl set image -n ${{ vars.NAMESPACE }} ${{ vars.RESOURCE_TYPE }}/${{ vars.RESOURCE_NAME }} $UPDATES
 
     - name: Wait for rollout
       run: |
