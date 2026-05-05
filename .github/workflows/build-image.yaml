@@ -13,6 +13,9 @@ on:
       dockerfile:
         type: string
         default: Dockerfile
+      context:
+        type: string
+        default: .
       use_submodule_ssh:
         required: false
         type: boolean
@@ -57,7 +60,7 @@ jobs:
     - name: Build Docker image
       uses: docker/build-push-action@v6
       with:
-        context: .
+        context: ${{ inputs.context }}
         file: ${{ inputs.dockerfile }}
         push: false # GCP credentials are short-lived (5 minutes), so we can't init creds first, have possibly >5 min build, and then push using those creds
         load: true
